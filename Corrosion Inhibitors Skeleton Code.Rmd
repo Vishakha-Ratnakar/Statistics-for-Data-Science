@@ -1,0 +1,177 @@
+---
+title: "Corrosion Inhibitors Analysis"
+author: "Vishakha Prakash Ratnakar"
+date: "11/03/2022"
+output:
+  word_document: default
+  html_document: default
+---
+
+# Question of Interest
+
+The main question is whether there is evidence of significant differences in usual weight loss between inhibitors A and B in general. Which inhibitor is better if there is a difference in the population?
+The null hypothesis states that there is no difference between the weight loss caused by inhibitor A and inhibitor B. An alternative hypothesis is that there is a difference between the two inhibitors of weight loss.
+The term "randomization" refers to the process of assigning patients to treatments at random. This randomization is essential because it reduces the likelihood of a biased answer. By permuting the group label, the main trick is to remove the relationship between the measurements.
+
+
+```{r include=FALSE, warning= FALSE}
+
+library(tolerance)
+library(infer)
+library(table1)
+library(viridis)
+library(ggridges)
+library(tidyverse)
+```
+
+# Exploratory Data Analysis
+
+## Read in the data and check the structure
+
+```{r echo=FALSE}
+
+inhib.weight.loss.df <- read.csv("D:\\Semester 2\\Stats 2\\Assignment 2\\inhib_weight_loss_2022.csv",header = TRUE)
+glimpse(inhib.weight.loss.df)
+
+
+
+```
+There are two types of corrosion inhibitors in the dataset: 28 "Inhibitor A" and 26 "Inhibitor B." These two inhibitors were treated for four hours in sulphuric acid, and weight loss over four hours is measured.
+
+## Summary Statistics
+
+
+
+```{r echo=FALSE}
+
+inhib.weight.loss.df %>% group_by(Inhibitor) %>% 
+  summarize(Sample.size=n(), Mean=mean(Weight.Loss), SD= sd(Weight.Loss))
+
+```
+The mean is the average of data, which is derived by dividing the total number of observations by the sum of all observations. From summary statistics, it is reasonably clear that the weight loss is higher when sulphuric acid is immersed with inhibitor A compared to those with inhibitor B by 5 units. A measure of dispersion is the standard deviation. In other words, it shows how far each score deviates from the average. The standard deviation of inhibitor A is 21.2 while that of inhibitor B is 22.1. There is only a difference of 1.1 between the standard deviation of both the inhibitors. 
+
+
+```{r echo=FALSE}
+ggplot(inhib.weight.loss.df, 
+       aes(x = Inhibitor, y = Weight.Loss, colour=Inhibitor)) +
+        geom_boxplot() + 
+  stat_summary(fun=mean, geom="point", shape=20, size=5, color="darkblue", fill="darkblue") +
+    labs(x = "Inhibitors", 
+  y = "Weight loss", 
+  title = "Boxplot of Weight loss by two Inhibitors") +
+  theme(legend.position = "none")
+
+```
+
+We can see from the summary statistic in the bar chart that the sample mean and median in both inhibitors are fairly nearby. The box plot's form is likewise pretty symmetrical, implying that the normality assumption (about the population's weight loss distribution) may not be a problem. Inhibitor A has two outliers, while inhibitor B has one outlier.
+
+## Density plots with rainclouds
+```{r echo=FALSE}
+
+ggplot(inhib.weight.loss.df, aes(y = Inhibitor, x = Weight.Loss, 
+                      fill = ..x..)) +
+  geom_density_ridges_gradient(jittered_points = TRUE, position = "raincloud",
+                                  alpha = 0.7, scale = 0.9) +
+  scale_fill_viridis(name = "Weight.Loss", option = "E") +
+labs(x = "Weight loss", 
+  y = "Inhibitors", 
+  title = "Weight loss Density by Inhibitors")
+
+
+
+```
+
+Both inhibitors are distributed normally. The majority of the data in inhibitor B falls between 210 and 280, with only one data point falling below that, at roughly 175. There are two outliers in inhibitor A, one at 200 and the other at 300. The remaining 26 data points show weight loss ranging from 210 to 280 units. We can say that the majority of the data points for both inhibitors are in the 210 to 280 units weight loss area.
+
+# Formal Analysis
+
+##  two sample t-test (using base R)
+```{r echo=FALSE}
+
+t.test(Weight.Loss ~ Inhibitor, data= inhib.weight.loss.df)
+
+```
+The difference in mean weight loss between inhibitors A and B is between -7.56 and 16.11 units, according to our 95 % confidence interval. In this sample, inhibitor A has a 4.28-unit greater mean weight loss than inhibitor B. We also conclude that there is no difference in mean weight loss between A and B based on this interval, because the null value, zero, is included in the 95 % CI. Since the interval contains zero, we do not have sufficient evidence to conclude that there is a difference. 
+
+# 95% Bootstrap CI for difference in means
+
+```{r echo=FALSE}
+
+Inhib.Weight.Loss.boot <- inhib.weight.loss.df %>%
+  specify(response = Weight.Loss, explanatory = Inhibitor) %>%
+  generate(reps = 1000, type = "bootstrap") %>%
+  calculate(stat = "diff in means", order = c("Inhibitor A", "Inhibitor B"))
+
+percentile_ci <- get_ci(Inhib.Weight.Loss.boot)
+
+percentile_ci
+
+```
+
+```{r echo=FALSE}
+
+Inhib.Weight.Loss.boot %>% 
+  visualize() +  shade_confidence_interval(percentile_ci) +
+    labs(title= "Corrosion Inhibitors Analysis Bootstrp Distribution",
+       x= "Difference (Inhibitor A - Inhibitor B) for mean weight loss",
+       y="Frequency")
+
+
+```
+
+The bootstrap interval generates a 95 % CI that is similar to the one created using the t-test distribution, differing by about 1 unit. This shows that the assumption of normality isn't a major worry. Based on the different analyses presented, we cannot say that there is convincing evidence of a difference in the mean weight loss between the two inhibitors as the interval is between -6.85 and 15.8, which contains a null value, zero. We can conclude from the data that there is no difference in the population mean.
+
+# Permutation test
+```{r echo=FALSE}
+
+samp.diff <-inhib.weight.loss.df %>%
+  specify(response = Weight.Loss, explanatory = Inhibitor) %>%
+  calculate(stat = "diff in means", order = c("Inhibitor A", "Inhibitor B"))
+
+# Simulate the diffs under the null hypothesis
+
+Inhib.Weight.Loss.null.dist <- inhib.weight.loss.df %>%
+  specify(response = Weight.Loss, explanatory = Inhibitor) %>%
+  hypothesize(null = "independence") %>%
+  generate(reps = 1000, type = "permute") %>%
+  calculate(stat = "diff in means", order = c("Inhibitor A", "Inhibitor B"))
+
+Inhib.Weight.Loss.null.dist %>% 
+    get_pvalue(obs_stat = samp.diff, direction = "two_sided")
+
+```
+The weight loss p-value found for the two inhibitors, A and B, is 0.47, which is significantly greater than the threshold significance of 0.05. This suggests that the p values are not statistically significant and that the null hypothesis is strongly supported. This signifies that the null hypothesis is retained and the alternative hypothesis is rejected. This concludes that we failed to reject the null hypothesis and also that we cannot conclude that a significant difference exists.
+
+## Tolerance Intervals
+
+###  Inhibitor A 
+
+```{r echo=FALSE}
+
+Inhibitor.A.Weight.Loss <- inhib.weight.loss.df %>% 
+  filter(Inhibitor %in% "Inhibitor A") %>% 
+  select(Weight.Loss) %>% as.data.frame()
+
+normtol.int(Inhibitor.A.Weight.Loss$Weight.Loss, 
+            alpha = 0.05, P = 0.95, side = 2)
+
+```
+
+###  Inhibitor B
+
+```{r echo=FALSE}
+
+Inhibitor.B.Weight.Loss <- inhib.weight.loss.df %>% 
+  filter(Inhibitor %in% "Inhibitor B") %>% 
+  select(Weight.Loss) %>% as.data.frame()
+
+normtol.int(Inhibitor.B.Weight.Loss$Weight.Loss, 
+            alpha = 0.05, P = 0.95, side = 2)
+
+```
+
+We can observe that 95% of inhibitor A will range in weight loss from 194.02 to 303.52 compared to 186.60 to 302.39 for those without the inhibitor.
+
+# Conclusion and Translation
+
+We may conclude that the average weight loss for inhibitor A is 4.8 units more than for inhibitor B. The 95 % CI for the difference in the population mean is -7.56 to 16.11, which includes zero. The bootstrap approach is the same, with a value ranging from -6.85 to 15.8. This suggests that there's a good chance that the difference between the two means is zero. With tolerance interval, we would confident to contain weight loss over four hours’ time period for 95% population with inhibitor A is 194 to 303 and with B it’s 186 to 302.   We also infer that the null hypothesis is failed to reject because the p-value is substantially higher than 0.05.

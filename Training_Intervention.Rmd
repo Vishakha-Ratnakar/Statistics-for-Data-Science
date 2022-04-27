@@ -1,0 +1,273 @@
+---
+title: "Training Intervention Analysis"
+author: "Vishakha Prakash Ratnakar"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  html_document: default
+---
+
+## Context: Celtic Study
+
+A sample of 18 full-time youth soccer players from a Youth Academy performed high intensity aerobic interval training over a 10-week in-season period in addition to usual regime of soccer training and matches. 
+
+**The aim is** to find if this extra training improve the leg Squats (`Squat_Pre` vs `Squat_Post`)?
+
+**Paired design:** each player measured before and after (i.e. start and after 10 weeks)
+
+A scaffold for the analysis when the primary response variable is VO2 max is provided below. You need to rerun the analysis using the Squat variables (i.e. `Squat_Pre` vs `Squat_Post`) to see if there has been any improvement on average and provide a confidence interval for the likely average improvement of players in the population of interest.
+
+Therefore, the key question of interest is to see if there has been any improvemnt on average in the leg Squats in the population of interest. 
+
+To answer this question, provide a detailed response for all of the tasks asked below using the Squat variables (i.e. `Squat_Pre` vs `Squat_Post`).
+
+
+Task: State the appropriate null and alternative hypotheses?
+
+Null Hypothesis:
+The null hypothesis states that no difference exists between particular population statistics. We would take the null hypothesis for our dataset to be that players’ leg squats do not improve after 10 weeks of training.
+
+Alternative hypothesis:
+A population parameter is less, greater, or different than the null hypothesis’s hypothesized value in the alternative hypothesis. The alternative hypothesis in our case would be there is an improvement in the leg squats after 10 weeks of training in the case of each player, i.e., the true mean value will be other than zero.
+
+
+
+Task: Define a Type I and Type II error and discuss the implication of making these
+errors in this application.
+
+Type I error:
+A false positive is also a Type I error. This happens when the null hypothesis is rejected by the researchers for a population that is actually true.
+
+In our case type, 1 error will happen when we conclude that 10 weeks of training have made an improvement in players’ leg squat when it actually didn’t. This improvement would have been due to different factors.
+
+Type II error:
+When researchers make a Type II error, often known as a false negative, they fail to reject the null hypothesis when it is erroneous.
+
+In our situation, type II error occurs when we infer that after 10 weeks of training, the players’ leg squat did not improve when, in fact, it did. This suggests that certain essential parameters were overlooked, resulting in an improvement.
+
+
+
+```{r include=FALSE}
+library(infer)
+library(tidyverse)
+library(tolerance)
+```
+
+## Read in the training intervention data
+
+Read in the data and have a look at the variable names and structure of the data.
+
+```{r}
+train.df <- read.csv("Training_intervention_data.csv")
+glimpse(train.df)
+```
+
+## Focus on the VO2 max response variables.
+
+## Summary Statistics
+
+```{r}
+train.df %>% select(Squat_Pre,Squat_Post) %>% summary()
+```
+Task: Interpret!
+
+Leg squats performed by a trainee before and after training are recorded in the Training Intervention dataset. This dataset consists of an 18-row data frame with five columns: “ID,” “VO2 max Pre,” “VO2 max Post,” “Squat Pre,” and “Squat Post.” Squats before training varied from a minimum of 100 to a maximum of 160 after 10 weeks of training as seen in the summary output for two columns in the training intervention above. A minimum of 130 squats can be achieved after training, with the possibility of increasing to 190 squats. We may conclude that the distribution is symmetric as the mean equals the median in both instances.
+
+## Mean and Standard Deviation
+
+```{r}
+train.df %>% select(Squat_Pre,Squat_Post) %>%
+            summarize(Pre_Mean=mean(Squat_Pre), Pre_SD= sd(Squat_Pre),
+                      Post_Mean=mean(Squat_Post), Post_SD= sd(Squat_Post))
+
+```
+
+Task: Interpret!
+
+The mean is the average of data, which is derived by dividing the total number of observations by the sum of all observations. The average number of squats performed by players prior to training is 130, and after 10 weeks of training, it has grown by about 29. A measure of dispersion is the standard deviation. In other words, it shows how far each score deviates from the average. Squat pre and squat post have SD values of 16.44 and 18.62, respectively.
+
+## Scatterplot of Pre and Post with line of equality
+
+```{r}
+train.df %>% ggplot(aes(x = Squat_Pre, y = Squat_Post)) +
+        geom_point() + 
+  ggtitle("Scatterplot of Pre and Post Squat") +
+  ylab("Post Squat Max (units ?)") +
+  xlab("Pre Squat (units ?)") +
+  geom_abline(slope=1, intercept=0)
+
+  
+```
+
+Task: Interpret!
+
+The X-axis indicates the number of squats completed by players in week 0 and the Y-axis reflects the number of squats performed by players after 10 weeks of training in the Scatterplot above. The line on the plot is called a line of equality which separates squat_pre and squat_post. Because this line contains no points, we can conclude that all players have a higher squat post than squat pre. There are three players who have made the most progress and three players who have made the least progress. Whereas the remainder of the players, such as (100,130), (110,140), and so on, i.e., the diagonal spots, exhibit similar improvement because their distance from the line of equality is similar.
+
+## Calculate the Improvement
+
+Calculate a new variable and have a look at the data frame to see that it has been created.  High vlaues of VO2 max are good to Post-Pre is a better measure than Pre-Post to capture this.
+
+```{r}
+
+train.df <- train.df %>% mutate(Improvement = Squat_Post-Squat_Pre) %>%
+              glimpse()
+
+```
+
+
+## Mean and Standard Deviation of Improvement
+
+```{r}
+train.df %>% select(Improvement) %>%
+            summarize(Imp_Mean=mean(Improvement), Imp_SD= sd(Improvement))
+
+```
+
+Task: Interpret!
+
+The difference between Squat Post and Squat Pre is being used to calculate the improvement of all players. The average improvement and standard deviation were then computed. After ten weeks, on average the players have 29.44 improvements. 6.39 is the standard deviation.
+
+## Boxplot of Improvement
+
+```{r}
+train.df %>% ggplot(aes(x = "", y = Improvement)) +
+        geom_boxplot() + 
+  ggtitle("Boxplot of Improvment in Squat Max") +
+  ylab("Improvment in Squat Max (units ?)") +
+  xlab("") +
+  coord_flip()
+
+
+```
+
+Task: Interpret!
+
+The median, 1st quartile, and 3rd quartile all have the same value of 30, as shown in the boxplot above. Therefore, we get a flat line as a boxplot. There are also two outliers, one at point 20 and the other at point 40. This boxplot lies in the positive axis, it can also be stated that there is an improvement in the number of squats made by the players after training.
+
+
+## 95% Confidence Interval Using the t.test function
+
+```{r}
+
+train.df %>% select(Improvement) %>% t.test()
+
+```
+
+Task: Based on the output given answer the following questions:
+
+* What is the likely average improvement in the population of interest? Interpret the relevant 95% Confidence Interval carefully.
+
+After 10 weeks of training, we have seen a 29.44 improvement in leg squats on average.
+The interpretation of this confidence interval is that we are 95 percent confidence, the proportion of population with improvement mean will be in a range of 26.266 to 32.62. This is the issue with sample statistics: they are inherently uncertain.
+
+
+* Use the relevant interval estimate and p-value to decide whether you think there is sufficient evidence in the samples provided to claim that there is any improvement in the population of interest!
+
+The result is considered to be statistically significant at that level when the p-value is less than a certain threshold. The significance level is set at 0.05 in this situation. We have enough evidence against the null hypothesis if the p-value is less than 0.05. Our null hypothesis is that leg squats do not improve following training.
+The output of the 95 percent confidence interval using the t-test yields a p-value of 4.356e-13, which is far less than the significance criterion of 0.05. As a result, we can infer that there is sufficient evidence to reject the null hypothesis, implying that there is an improvement in the population of interest.
+
+
+* What are the assumptions underlying the one sample t-test presented?
+
+Assumption 1: The observations should be distinct from one another. Assumption 2: There must be no outliers present in the dependent variable for which the one-sample t-test is done. Assumption 3: The data when plotted should have a normal distribution, bell-shaped curve.
+
+* Explain why or why not the assumptions look justified based on the output provided.
+
+The values in the columns squat pre and squat post in the supplied dataset are independent of one another, implying that none of the columns are reliant on one another. As a result, the output is justified by our first assumption.
+Assumption 2 for one sample t-test presents that there should be no significant outliers for the data used. As can be seen in the boxplot above there are two outliers one at point 20 and the other at point 40 for improvement in squats. The mean improvement is 29.44 with only a small variation between the players. The Presence of outliers results in a decrease in the accuracy of our results. Hence the second assumption is not justified by the output.
+It can be deduced from the boxplot above that the calculated improvement is not normally distributed and so skewed. As a result, the output does not support the third assumption.
+
+
+## 95% Bootstrap CI for the mean
+
+```{r}
+boot <- train.df %>%
+  specify(response = Improvement) %>%
+  generate(reps = 1000, type = "bootstrap") %>%
+  calculate(stat = "mean")
+
+percentile_ci <- get_ci(boot)
+round(percentile_ci,2)
+
+
+```
+
+Task: Interpret!
+
+To execute bootstrap sampling, we used the “Improvement” column from our train data set. A total of 1000 bootstrap samples have been created. There will be 1000 rows in the boot data frame, each one with a different bootstrap mean. We then calculate the percentile confidence interval using this information. The confidence interval is set to 95 percent by default. The 2.5th and 97.5th percentiles are represented by lower ci and upper ci, respectively. The found boundaries are 26.7 and 32.2. As a result, we can say that if we repeat the experiment with the entire population, the improvement mean will range from 26.7 to 32.2 with a 95% confidence level.
+When we compare these numbers to the range obtained by the t distribution, we can see that lower ci remains unchanged, while upper ci decreases by 0.40
+
+
+```{r}
+boot %>% visualize(endpoints = percentile_ci, direction = "between") +
+                   xlab("Bootstrap Mean") + ylab("Frequency")
+
+
+```
+
+Task: Interpret!
+
+The bootstrap mean values are plotted against the frequency in the histogram that is generated. We have a 95% certainty that the mean is between 26.7 and 32.2.
+The bootstrap mean values are plotted against the frequency in the histogram that is generated. We have a 95% certainty that the mean is between 26.7 and 32.2. We may conclude that the data skewed and not normally distributed
+
+
+## 95% Bootstrap CI for the median
+
+```{r}
+
+boot.median <- train.df %>%
+  specify(response = Improvement) %>%
+  generate(reps = 1000, type = "bootstrap") %>%
+  calculate(stat = "median")
+
+percentile_ci_median <- get_ci(boot.median)
+round(percentile_ci_median,2)
+
+
+```
+
+Task: Interpret!
+
+By sampling the dataset 1000 times and identifying the median of each sample, we used the bootstrap method to get the estimated statistics on the dataset. The bootstrap mean and bootstrap median produce distinct results, as can be seen.
+The bootstrap mean ranges from 26.7 to 32.2, whereas the bootstrap median range is fixed at point 30. This is due to most of the players having their improvement value set as 30. The difference between the bootstrap mean and bootstrap median indicates that the data is skewed.
+
+
+```{r}
+boot.median %>% visualize(endpoints = percentile_ci_median, direction = "between") +
+                   xlab("Bootstrap Median") + ylab("Frequency")
+
+
+```
+
+Task: Interpret!
+
+The histogram that was generated shows the link between the bootstrap median and the frequency. Because maximal bootstrap samples yield a median value of 30, the bootstrap median is 30. The median value is fixed because it is not affected by the outliers. Thus, can conclude that the model is skewed and not normally distributed because the bootstrap mean and bootstrap median diverge.
+
+
+
+## 95% Tolerance Interval (Bonus Question)
+
+Calculate a 95% tolerance interval covering 95% of improvement values 
+
+```{r}
+
+normtol.int(train.df$Improvement, alpha = 0.05, P = 0.95)
+
+```
+
+Task: Interpret!
+
+A confidence interval generates a range of values from a random sampling of data that most likely contains the population parameter. For diverse samples of data, we have a 95 percent confidence level that the improvement mean will vary from 26.7 to 32.2. The tolerance interval, on the other hand, shows how much each subject has improved. It determines the lower and upper bounds within which the stated fraction of the population is likely to fall. As a result, we can state that we have a 95% tolerance level, with 95 percent improvement values ranging from 13.76 to 45.12.
+
+
+## Overall Conclusion 
+Task: state your overall conclusion. 
+
+Based on the data provided the sample mean of improvement was 29.44 units. We are 95% positive that after 10 weeks of training, improvement in leg squats would be between 26.7 and 32.2. Given that the average Squat Pre at the start of the study was 130, the average improvement is estimated to be around 22.64 percent. Furthermore, the t-test rejects our null hypothesis, implying that an alternative hypothesis is accepted, resulting in an improvement in leg squats of participants after 10 weeks of training.
+It’s also worth noticing that the results of the t-test mean and the bootstrap mean are almost identical. There is a small amount of fluctuation because bootstrapping is a random process. This means that if we bootstrap 1000 times, each time the result will be different. But the t test median and bootstrap median does not vary this is because the medians are not affected by outliers which is not in case of mean calculation
+
+
+
+ 
+
+
+

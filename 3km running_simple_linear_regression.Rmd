@@ -1,0 +1,236 @@
+---
+title: "Simple Linear Regression Assignment"
+author: "Vishakha Ratnakar"
+date: "22-04-2022"
+output:
+  word_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Predicting 3 km Running Times based on laboratory testing.
+
+### Study Description: 
+Sixteen male well-trained middle and long distance runners performed a 3 km time trial and a number of running tests in the laboratory including their running velocity (km.h-1) at a blood lactate concentration of 4 mmol.l-1 (v4mM) and at their Lactate Threshold (vTlac). All the laboratory testing took place on a motorised treadmill while distance running performance was determined by 3 km time trials on an indoor 200m track.
+
+
+
+## 1. Question of Interest: 
+To investigate whether there is sufficient evidence of a dependency of 3 km running time on v-4mM in the population of male runners of of interest in order to use their blood lactate markers to predict their 3km running time. 
+
+Null and Alternative hypothesis would be:
+
+- $H_0 :\beta_0 = 0$ i.e the intercept is zero.
+- $H_1 :\beta_0 = 0$ i.e the intercept is not zero.
+
+Similarly:
+
+- $H_0 :\beta_1 = 0$ i.e the slope is zero.
+- $H_1 :\beta_1 = 0$ i.e the slope is not zero.
+
+The table under the coefficient produced by regression output provides additional information such as standard error (Std.Error) for the intercept and the slope, t-test value and the p value for the two tailed hypothesis test for intercept and slope. If the p-value of intercept and slope is less then 0.05 we would consider that there is sufficient evidence to reject the null hypothesis and conclude that v4mM to be deemed as a useful predictor of Running time. 
+
+Response Variable: 3km running time (Running.Time) 
+Explanatory Variable: blood lactate markers (v4mM)
+
+```{r}
+
+# Load the libraries needed.
+
+library(tidyverse)
+
+```
+
+
+## 2. Exploratory Data Analysis
+
+```{r}
+# read in the data
+
+running.df = read.csv("3krunning.csv", header = TRUE)
+
+running.df %>% summary()
+
+running.df %>% 
+            summarize(Mean.Running.Time = mean(Running.Time),
+                      SD.Running.Time = sd(Running.Time),
+                      Mean.v4mM = mean(v4mM),
+                      SD.v4mM = sd(v4mM),
+                      Mean.vTlac = mean(vTlac),
+                      SD.vTlac = sd(vTlac),
+                      Mean.Rel.14.5 = mean(Rel.14.5),
+                      SD.Rel.14.5 = sd(Rel.14.5),
+                      Mean.Rel.16.1 = mean(Rel.16.1),
+                      SD.Rel.16.1 = sd(Rel.16.1),
+                      Mean.VO2Max = mean(VO2Max),
+                      SD.VO2Max = sd(VO2Max))
+
+```
+In terms of running time, each player’s total time falls between 8 and 11, with a minimum of 8.230 and a maximum of 10.58. The average running time velocity is 9.458 seconds with Standard deviation of 0.744.
+
+The V4mM and vTlac values are present in the ranges 13 to 21, with a minimum of 14.20 and a high of 20.40 for V4mM. In vTlac, there is a tiny variance in values with a similar pattern. Also it can be observed that the variance between standard deviations is only of 0.77.
+
+The values in the columns Rel. 14.5 and Rel. 16.1 correspond to the ranges 46-58 and 50-64, respectively. Standard deviation range for Rel. 14.5 is 3.28 while that for rel. 16.1 is 3.77. Players’ maximum Vo2 values range from 16 to 24, with a mean value of 20.69 with standard deviation of 2.13.
+
+
+### Scatterplot
+
+
+```{r}
+
+ggplot(running.df, aes(y=Running.Time , x = v4mM)) + 
+  geom_point() +
+    labs(x = "v4mM(mmol/L) ", y = "Running time (Km/h)", 
+       title = "Scatterplot of Running time and blood lactate  ")
+
+
+```
+
+This scatterplot denotes an inverse relationship between blood lactate concentration and Running time. The running time decreases as the amount of blood with lactate concentration increases. Between 14 and 16 mmol/l of lactate concentration, the running time reduces from roughly 10.8 to 9.25. From 16 to 18 running time is quite consistent between 9 to 9.5. Further, as v4mM increases from 18 to 20, the running duration lowers from 8.8 to 7.75. The data is also a little dispersed. As a result, we can conclude that as the lactate concentration in the blood rises, the time it takes the man to finish the 3KM distance decreases.
+
+### With smoother.
+
+```{r}
+
+ggplot(running.df, aes(y = Running.Time , x = v4mM)) + 
+  geom_point() +
+  geom_smooth() +
+  labs(x = "v4mM(mmol/L) ", y = "Running time (KM/h)", 
+       title = "Scatterplot of Running time and blood lactate  ")
+
+
+```
+
+A smooth line, shown in blue, has been added to the scattered plot above. This line attempts to link all of the points while also providing information about the relationship between two variables. We can see that the line has a linear shape, indicating that we may use a linear regression model to determine the link between blood lactate concentration and running time.
+
+### Correlation coefficient
+
+
+```{r}
+
+running.df %>% select (v4mM, Running.Time) %>% cor()
+```
+As can be seen from both the figure and correlation coefficent, there is strong negative linaer relationship (r = -0.93) between the v4mM and running time. Also the fitted smooth line is close to linear which further supports the linera association between the two variables. 
+
+The subjective impression from the scatter plot is that as the lactate concentration in the blood rises, the time it takes the man to finish the 3KM distance decreases. The general pattern, across the range of the v4mM in the sample, is plausibly linear. The sample co-relation between the two variables is -0.93 suggesting strong negative  relationship between the two variables.
+
+## 3. Formal Analysis
+
+### Scatterplot with line of best fit
+
+```{r}
+
+ggplot(running.df, aes(y = Running.Time , x = v4mM)) + 
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(x = "v4mM(mmol/L) ", y = "Running time (KM/h)", 
+       title = "Scatterplot of Running time and blood lactate  ")
+
+
+```
+A straight line that is the best approximation of the provided data is called a line of best fit. This best line is calculated by using intercept and slope. The intercept is the point on the y axis where the line crosses it and x is 0. The angle between the line and the x-axis is known as slope. The slope gives the strength of the relationship between the two variables. As our correlation value is negative, we can say that the value of the slope is also negative.
+
+
+### Fitting a Simple Linear Regression Model
+
+```{r}
+
+running.model <- lm(Running.Time ~ v4mM , running.df)
+running.model
+
+```
+In the above, the `(Intercept)` is the estimate of the population intercept $\beta_0$ while the 'V4mM' is the estimate of $\beta_1$.
+
+For simple linear regression the equation is
+Response variable = Intercept + slope*Explanatory variable + random variability.
+For our dataset the regression equation will be Running time = 15.8223 + (-0.3729) *v4mM
+
+b1 is the slope, which tells about how rapidly y changes with respect to x. For every unit increase in blood lactate concentration then it is expected that the average running time produced will be decreases by 0.3729 units.
+
+b0 is the y-intercept, which informs where the line cuts the y axis when x is zero. This gives the average running time produced when v4mM is zero. In our case, the intercept is 15.8223.
+
+### Hypothesis Testing
+
+```{r}
+summary(running.model)
+```
+
+As can be seen the p-value = 2.71e-07 for v4mM is much less then 0.05. So there is convincing evidence to reject the null hypothesis ($H_0 :\beta_1 = 0$ i.e the slope is zero) and so v4mM is deemed a usefull predictor of running time. 
+
+Similarly, p-value  = 1.96e-12 for the intercept is much less than 0.05 so there is convincing evidence to reject the null hypothesis ($H_0$), suggesting that there is a run time of 15.8223 on average when v4mM is zero. 
+
+### Residual Plots
+
+
+```{r}
+
+plot(running.model)
+
+```
+The first is a plot of the standardized residuals versus the fitted values, in which a random dispersion of points is desired.
+
+The second plot is a normal probability plot of the residuals, in which you're looking for strong agreement between the observed residuals and what the pattern would predict (the highlighted line) if they were from a normal distribution.
+
+A scale (or spread)-location plot is Plot 3. This graph depicts what occurs when residuals are distributed evenly over the explanatory range.
+
+The "Residuals vs. Leverage Plot" is Plot 4. This graph aids you in identifying any influential examples (i.e. subjects) that may have a significant impact on the predicted slope or intercept.
+
+
+### Make some predicition
+
+Prediction of Running time when the v4mM is 17,18,19,20.
+
+```{r}
+running_new <- data.frame(
+  v4mM = c(16,17, 18, 19, 20)
+)
+
+```
+
+```{r}
+
+predict(running.model, newdata = running_new, interval = "confidence")
+
+```
+According to the statistics, when v4mM concentration is 16, the predicted running time for that individual is 9.8566, and the 95 % confidence interval for 16 is (9.67 to 10.038). This means that, according to our running model, the running time for a concentration of 16 v4mM is 9.86, on average, with a range of 9.67 to 10.038. A similar concept is applied to the remaining.
+
+```{r}
+
+predict(running.model, newdata = running_new, interval = "prediction")
+
+```
+A prediction interval expresses the degree of uncertainty associated with a specific value. The wider 95% prediction interval 9.20 to 11.50 gives the range of likely values for the actual measurement of the running time observed for the players with v4mM of 17.
+
+
+### Plots with prediction intervals
+
+```{r}
+
+pred.int = predict(running.model, newdata = running.df, interval = "prediction")
+
+running2 = cbind(running.df, pred.int) # store predictions alongside original dataset
+
+ggplot(running2, aes(y = Running.Time , x = v4mM)) +
+  geom_point() +
+  stat_smooth(method = lm) +
+  geom_line(aes(y = upr), color = "red", linetype = "dashed") + # 3. Add prediction intervals
+  geom_line(aes(y = lwr), color = "red", linetype = "dashed") +
+  labs(x = "v4mM(mmol/L) ", y = "Running time (KM/h)", 
+       title = "Scatterplot of Running time and blood lactate  ")
+
+
+
+
+```
+
+The regression line is highlighted in blue in the above plot, while the confidence interval is shaded in gray. As a result, there is a 95% chance that the true best fit line for our dataset is included within the confidence interval. The prediction interval is the data covered between the red dotted lines. This band anticipates that 95% of all data points will fall inside this range.
+
+## 4. Conclusion and Translation
+
+The above simulation of the link between running time and blood lactate marker indicates that the two have an inverse relationship. Players’ running time reduces when their blood lactate level rises. The intercept is 15.82, and the slope is -0.3, which is negative, providing enough evidence to show that the two variables have an inverse connection. Also, we can see that the prediction interval is wider than the confidence interval. With p value it is also proved that the null hypothesis for both intercept and the slope is rejected.
+
+
+

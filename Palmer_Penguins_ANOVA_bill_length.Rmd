@@ -1,0 +1,144 @@
+---
+title: "One Way ANOVA"
+author: "Vishakha Ratnakar"
+date: "20/04/2022"
+output:
+  word_document: default
+  html_document: default
+---
+
+
+```{r include=FALSE}
+library(palmerpenguins)
+library(table1)
+library(viridis)
+library(ggridges)
+library(rstatix)
+library(tidyverse)
+```
+
+
+## 1. Question of Interest
+
+The Palmer penguin dataset comprises eight columns, including species, island, bill length, bill depth, flipper length, body mass, sex, and year. Only three types of Palmer penguin species, Adelie, Chinstrap, and Gentoo, with their bill lengths, are of importance in this dataset. The question of interest is to see whether there is evidence that the mean bill length is equal in the populations of Adelie, Chinstrap, and Gentoo.
+
+The following are the relevant null and alternative hypotheses for comparing bill length:
+
+- $H_0$: The mean bill length is equal in the populations of Adelie, Chinstrap, and Gentoo species of Palmer Penguins.
+- $H_1$: The mean bill length is not equal in the population of Adelie, Chinstrap, and Gentoo species of Palmer Penguins
+
+We use one-way ANOVA testing to make the claim that the mean bill length is different between each of the three species. The ANOVA involves testing for significant differences among the population's means across 3 or more levels. In this ANOVA test, we check the p value. If the p value is considerably less than 0.05, the null hypothesis of equal population mean bill length across the three species can be rejected. 
+
+
+
+## Subjective impression:
+
+## 2. Exploratory Data Analysis
+
+
+```{r warning=FALSE, echo=FALSE}
+
+penguins %>%
+  group_by(species) %>%
+  get_summary_stats(bill_length_mm, 
+                    show = c("mean", "median", "sd"))
+```
+
+From the numerical summaries provided, it can be seen that the Chinstrap species of penguins has a greater mean of 48.834. This is followed by Gentoo and Adilie, which have the least mean bill length, which is 38.80. The median of each species appears to be similar to the mean, indicating that the data is distributed normally. Adelie, Chinstrap, and Gentoo pengunins have standard deviations of 2.6, 3.39, and 3.08, respectively.
+
+
+```{r warning=FALSE, echo=FALSE}
+
+ggplot(data = penguins, aes(x = species, y = bill_length_mm)) +
+  geom_boxplot(aes(color = species), width = 0.3, show.legend = FALSE) +
+    stat_summary(fun=mean, colour="red", geom="point", 
+               shape=18, size=3) +
+  geom_jitter(aes(color = species), alpha = 0.5, show.legend = FALSE, position = position_jitter(width = 0.2, seed = 0)) +
+  scale_color_manual(values = c("darkorange","purple","cyan4")) +
+  theme_minimal() +
+  labs(x = "Species",
+       y = "Bill length (mm)") 
+
+
+```
+The mean and median of the Adelie species are quite close, as can be seen in the boxplot. In the case of Gentoo, the same is true. The mean for chinstraps is somewhat lower than the median, but it is reasonably symmetrical. Because the mean and median are so identical, the samples appear to form a normal distribution. This appears to be the case, though one Gentoo type penguin has a greater bill length than the others, which acts as an outlier. There is also a difference in bill length across the three species' means.
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+ggplot(penguins, aes(x = bill_length_mm, 
+                      y = species, 
+                      fill = ..x..)) +
+  geom_density_ridges_gradient(jittered_points = TRUE, position = "raincloud",
+                                  alpha = 0.7, scale = 0.9) +
+  scale_fill_viridis(name = "Bill Length (mm)", option = "C") +
+  labs(title = "Bill Length (mm) by Species",
+       x= "Bill Length (mm)",
+       y="Species") 
+
+
+```
+Adelie and Gentoo have a normal distribution, as can be seen from the density diagram. In Adelie, the bulk of data points are between 30 and 45, with three data points over 45, between 45 and 47. In the case of Gentoo, which has a bill length of around 59, there is an outlier. The remaining 122 data points are in the 40-55 range. Chinstrap appears to have a bimodal distribution, with the major peak at approximately 52 and the lower peak at around 47.
+
+## 3. Formal Analysis
+
+#One-way ANOVA
+
+```{r warning=FALSE, echo=FALSE}
+
+penguins.bill.length.aov <- aov(bill_length_mm ~ species, data = penguins)
+
+summary(penguins.bill.length.aov)
+
+```   
+
+The p-value is 2e-16, which is far lower than the threshold of 0.05. This states that the null hypothesis of equal population mean bill length across the three species can be rejected. It can be concluded that there is some difference in the population mean bill length between the three species.
+
+Following the discovery of some variation among the three species, it is necessary to determine which species are considerably different. Tukey's multiple comparison process is used to accomplish this.
+
+```{r warning=FALSE, echo=FALSE}
+
+penguins.bill.tukey.res <- TukeyHSD(penguins.bill.length.aov)
+
+penguins.bill.tukey.res
+
+plot(penguins.bill.tukey.res, las=1 , col="brown", cex.lab=2, cex.axis=0.5)
+
+```   
+The first interval is from 9.02 to 11.06 for Chinstrap minus Adelie, which is fully positive. As a result, it may be determined that Chinstrap has a substantially longer average bill than Adelie. Because the second interval does not contain zero, there is significant evidence that the bill length in Gentoo is greater on average than in Adelie, ranging from 7.86 to 9.55. The third interval is totally negative, ranging from -2.38 to -0.27 and not including zero, therefore even in this scenario, we can detect a difference in average bill length between Gentoo and Chinstrap.
+
+## Assumptions
+
+- Samples obtained are random
+- All observations are independent of each other.
+- The underlying population are almost normally distributed with equal standard deviation but possibly different means
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+penguins %>% group_by(species) %>%
+  summarise(FL.sd = sd(bill_length_mm, na.rm = TRUE)) 
+
+```
+Equal standard deviation is checked by following the rough rule of thumb:
+
+The Rough rule of thumb states that, difference in Standard deviation are only a concern if the largest of sample SD is more than twice the smallest Standard deviation. 
+
+Largest Standard deviation = 3.339256
+Smallest Standard deviation = 2.663405
+
+2 * Smallest Standard deviation = 2 * 2.663405 = 5.32681
+
+As 3.339256 < 5.32681, the Assumptions are fine.
+
+The box plot in the Explanatory Analysis section can be used to test the normal distribution assumption.The box plots show symmetry in each sample separately. This assumption also appears plausible.
+
+## Conclusion and Translation
+
+According to the results of the study, there is a significant difference in bill length across the three species of Palmer penguins: Adelie, Chinstrap, and Gentoo. The observed p value is much lower than 0.05. The Chinstrap and Gentoo, in particular, have longer bills than Adelie. The difference in the mean bill length between Gentoo and Chinstrap is likely between -2.38 and -0.27 mm. We've also established that the assumptions of normal distribution and equal standard deviation are correct. The largest standard deviation is less than twice the smallest standard deviation.
+
+
+
+
+
+
